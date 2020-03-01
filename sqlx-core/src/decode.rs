@@ -11,7 +11,7 @@ where
     Self: Sized,
     DB: HasRawValue<'de>,
 {
-    fn decode(raw: DB::RawValue) -> crate::Result<Self>;
+    fn decode(value: DB::RawValue) -> crate::Result<Self>;
 }
 
 /// An unexpected `NULL` was encountered during decoding.

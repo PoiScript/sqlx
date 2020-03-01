@@ -9,9 +9,6 @@ pub mod error;
 #[macro_use]
 mod io;
 
-#[cfg(any(feature = "mysql", feature = "postgres"))]
-mod cache;
-
 mod connection;
 mod cursor;
 mod database;

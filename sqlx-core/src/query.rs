@@ -99,8 +99,6 @@ where
     ///
     /// The returned type has most of the same methods but does not have [`.execute()`][Query::execute].
     ///
-    /// The mapping function returns [`crate::Result`] so [`Row::try_get`] can be used.
-    ///
     /// Stylistically, we recommend placing this call after any [`.bind()`][Query::bind]
     /// calls, just before [`.fetch()`][Query::fetch], etc.
     ///
@@ -180,7 +178,7 @@ where
         try_stream! {
             let mut cursor = executor.fetch_by_ref(self.query);
             while let Some(next) = cursor.next().await? {
-                let mapped = self.mapper.map_row(next)?;
+                let mapped = self.mapper.map_row(next);
                 yield mapped;
             }
         }
@@ -196,7 +194,7 @@ where
         let mut cursor = executor.fetch_by_ref(self.query);
         let mut mapper = self.mapper;
         let val = cursor.next().await?;
-        val.map(|row| mapper.map_row(row)).transpose()
+        Ok(val.map(|row| mapper.map_row(row)))
     }
 
     pub async fn fetch_one<'e, E>(self, executor: E) -> crate::Result<F::Mapped>
@@ -221,7 +219,7 @@ where
         let mut out = vec![];
 
         while let Some(row) = cursor.next().await? {
-            out.push(self.mapper.map_row(row)?);
+            out.push(self.mapper.map_row(row));
         }
 
         Ok(out)
@@ -235,16 +233,16 @@ where
 pub trait MapRow<DB: Database> {
     type Mapped: Unpin;
 
-    fn map_row(&mut self, row: <DB as HasRow>::Row) -> crate::Result<Self::Mapped>;
+    fn map_row(&mut self, row: <DB as HasRow>::Row) -> Self::Mapped;
 }
 
-impl<O: Unpin, DB> MapRow<DB> for for<'c> fn(<DB as HasRow<'c>>::Row) -> crate::Result<O>
+impl<O: Unpin, DB> MapRow<DB> for for<'c> fn(<DB as HasRow<'c>>::Row) -> O
 where
     DB: Database,
 {
     type Mapped = O;
 
-    fn map_row(&mut self, row: <DB as HasRow>::Row) -> crate::Result<O> {
+    fn map_row(&mut self, row: <DB as HasRow>::Row) -> O {
         (self)(row)
     }
 }

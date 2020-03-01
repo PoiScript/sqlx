@@ -31,16 +31,16 @@ features = [ "tls", "postgres", "mysql", "uuid", "chrono" ]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = [ "macros", "runtime-async-std" ]
+default = [ "runtime-async-std" ]
 macros = [ "sqlx-macros" ]
 tls = [ "sqlx-core/tls" ]
 
 # runtime
-runtime-async-std = [ "sqlx-core/runtime-async-std", "sqlx-macros/runtime-async-std" ]
+runtime-async-std = [ "sqlx-core/runtime-async-std" ]
 runtime-tokio = [ "sqlx-core/runtime-tokio", "sqlx-macros/runtime-tokio" ]
 
 # database
-postgres = [ "sqlx-core/postgres", "sqlx-macros/postgres" ]
+postgres = [ "sqlx-core/postgres" ]
 mysql = [ "sqlx-core/mysql", "sqlx-macros/mysql" ]
 
 # types
@@ -74,6 +74,10 @@ required-features = [ "mysql" ]
 
 [[test]]
 name = "postgres"
+required-features = [ "postgres" ]
+
+[[test]]
+name = "postgres-unprepared"
 required-features = [ "postgres" ]
 
 [[test]]

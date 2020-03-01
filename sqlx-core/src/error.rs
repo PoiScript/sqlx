@@ -51,6 +51,15 @@ pub enum Error {
     Decode(Box<dyn StdError + Send + Sync>),
 }
 
+impl Error {
+    pub(crate) fn decode<E>(err: E) -> Self
+    where
+        E: StdError + Send + Sync + 'static,
+    {
+        Error::Decode(err.into())
+    }
+}
+
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
