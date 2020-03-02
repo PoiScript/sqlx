@@ -1,59 +1,58 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::str::{from_utf8, Utf8Error};
 use std::sync::Arc;
 
 use crate::decode::Decode;
+use crate::error::UnexpectedNullError;
 use crate::mysql::protocol;
 use crate::mysql::MySql;
-use crate::row::{Row, RowIndex};
+use crate::row::{ColumnIndex, Row};
 use crate::types::Type;
 
-pub struct MySqlRow {
-    pub(super) row: protocol::Row,
-    pub(super) columns: Arc<HashMap<Box<str>, usize>>,
+pub enum MySqlValue<'c> {
+    Binary(&'c [u8]),
+    Text(&'c str),
 }
 
-impl Row for MySqlRow {
+impl<'c> TryFrom<Option<MySqlValue<'c>>> for MySqlValue<'c> {
+    type Error = crate::Error;
+
+    #[inline]
+    fn try_from(value: Option<MySqlValue<'c>>) -> Result<Self, Self::Error> {
+        match value {
+            Some(value) => Ok(value),
+            None => Err(crate::Error::decode(UnexpectedNullError)),
+        }
+    }
+}
+
+pub struct MySqlRow<'c> {
+    pub(super) row: protocol::Row<'c>,
+    pub(super) columns: Arc<HashMap<Box<str>, usize>>,
+    pub(super) binary: bool,
+}
+
+impl<'c> Row<'c> for MySqlRow<'c> {
     type Database = MySql;
 
     fn len(&self) -> usize {
         self.row.len()
     }
 
-    fn get<T, I>(&self, index: I) -> T
+    fn get_raw<'r, I>(&'r self, index: I) -> crate::Result<Option<MySqlValue<'c>>>
     where
-        Self::Database: Type<T>,
-        I: RowIndex<Self>,
-        T: Decode<Self::Database>,
+        I: ColumnIndex<Self::Database>,
     {
-        index.get(self).unwrap()
+        let index = index.resolve(self)?;
+        let buffer = self.row.get(index);
+
+        buffer
+            .map(|buf| match self.binary {
+                true => Ok(MySqlValue::Binary(buf)),
+                false => Ok(MySqlValue::Text(from_utf8(buf)?)),
+            })
+            .transpose()
+            .map_err(|err: Utf8Error| crate::Error::Decode(Box::new(err)))
     }
 }
-
-impl RowIndex<MySqlRow> for usize {
-    fn get<T>(&self, row: &MySqlRow) -> crate::Result<T>
-    where
-        <MySqlRow as Row>::Database: Type<T>,
-        T: Decode<<MySqlRow as Row>::Database>,
-    {
-        Ok(Decode::decode_nullable(row.row.get(*self))?)
-    }
-}
-
-impl RowIndex<MySqlRow> for &'_ str {
-    fn get<T>(&self, row: &MySqlRow) -> crate::Result<T>
-    where
-        <MySqlRow as Row>::Database: Type<T>,
-        T: Decode<<MySqlRow as Row>::Database>,
-    {
-        let index = row
-            .columns
-            .get(*self)
-            .ok_or_else(|| crate::Error::ColumnNotFound((*self).into()))?;
-
-        let value = Decode::decode_nullable(row.row.get(*index))?;
-
-        Ok(value)
-    }
-}
-
-impl_from_row_for_row!(MySqlRow);

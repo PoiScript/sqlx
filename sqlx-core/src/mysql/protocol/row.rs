@@ -6,18 +6,18 @@ use crate::io::Buf;
 use crate::mysql::io::BufExt;
 use crate::mysql::protocol::{Decode, TypeId};
 
-pub struct Row {
-    buffer: Box<[u8]>,
-    values: Box<[Option<Range<usize>>]>,
+pub struct Row<'c> {
+    buffer: &'c [u8],
+    values: &'c [Option<Range<usize>>],
     binary: bool,
 }
 
-impl Row {
+impl<'c> Row<'c> {
     pub fn len(&self) -> usize {
         self.values.len()
     }
 
-    pub fn get(&self, index: usize) -> Option<&[u8]> {
+    pub fn get(&self, index: usize) -> Option<&'c [u8]> {
         let range = self.values[index].as_ref()?;
 
         Some(&self.buffer[(range.start as usize)..(range.end as usize)])
@@ -53,11 +53,19 @@ fn get_lenenc(buf: &[u8]) -> usize {
     }
 }
 
-impl Row {
-    pub fn decode(mut buf: &[u8], columns: &[TypeId], binary: bool) -> crate::Result<Self> {
+impl<'c> Row<'c> {
+    pub fn read(
+        mut buf: &'c [u8],
+        columns: &[TypeId],
+        values: &'c mut Vec<Option<Range<usize>>>,
+        binary: bool,
+    ) -> crate::Result<Self> {
+        let mut buffer = &*buf;
+
+        values.clear();
+        values.reserve(columns.len());
+
         if !binary {
-            let buffer: Box<[u8]> = buf.into();
-            let mut values = Vec::with_capacity(columns.len());
             let mut index = 0;
 
             for column_idx in 0..columns.len() {
@@ -71,8 +79,8 @@ impl Row {
 
             return Ok(Self {
                 buffer,
-                values: values.into_boxed_slice(),
-                binary,
+                values: &*values,
+                binary: false,
             });
         }
 
@@ -88,7 +96,6 @@ impl Row {
         buf.advance(null_len);
 
         let buffer: Box<[u8]> = buf.into();
-        let mut values = Vec::with_capacity(columns.len());
         let mut index = 0;
 
         for column_idx in 0..columns.len() {
@@ -130,8 +137,8 @@ impl Row {
         }
 
         Ok(Self {
-            buffer,
-            values: values.into_boxed_slice(),
+            buffer: buf,
+            values: &*values,
             binary,
         })
     }
@@ -287,7 +294,7 @@ mod test {
 
         EofPacket::decode(&[254, 0, 0, 34, 0])?;
 
-        Row::decode(
+        Row::read(
             &[
                 0, 64, 90, 229, 0, 4, 0, 0, 0, 4, 114, 117, 115, 116, 0, 0, 7, 228, 7, 1, 16, 8,
                 10, 17, 0, 0, 4, 208, 7, 1, 1, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

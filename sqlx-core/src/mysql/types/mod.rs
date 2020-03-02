@@ -1,12 +1,12 @@
-mod bool;
-mod bytes;
-mod float;
-mod int;
-mod str;
-mod uint;
+// mod bool;
+// mod bytes;
+// mod float;
+// mod int;
+// mod str;
+// mod uint;
 
-#[cfg(feature = "chrono")]
-mod chrono;
+// #[cfg(feature = "chrono")]
+// mod chrono;
 
 use std::fmt::{self, Debug, Display};
 
