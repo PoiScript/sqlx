@@ -24,32 +24,32 @@ pub trait Row<'c>: Unpin + Send {
     /// Returns the number of values in the row.
     fn len(&self) -> usize;
 
-    fn get<'r, T, I>(&'r self, index: I) -> T
+    fn get<T, I>(&self, index: I) -> T
     where
-        'c: 'r,
+        // 'c: 'r,
         T: Type<Self::Database>,
         I: ColumnIndex<Self::Database>,
-        T: Decode<'r, Self::Database>,
+        T: 'c + Decode<'c, Self::Database>,
     {
         self.try_get::<T, I>(index).unwrap()
     }
 
-    fn try_get<'r, T, I>(&'r self, index: I) -> crate::Result<T>
+    fn try_get<T, I>(&self, index: I) -> crate::Result<T>
     where
-        'c: 'r,
+        // 'c: 'r,
         T: Type<Self::Database>,
         I: ColumnIndex<Self::Database>,
-        T: Decode<'r, Self::Database>,
+        T: Decode<'c, Self::Database>,
     {
         Ok(Decode::decode(self.try_get_raw(index)?)?)
     }
 
-    fn try_get_raw<'r, I>(
-        &'r self,
+    fn try_get_raw<I>(
+        &self,
         index: I,
-    ) -> crate::Result<<Self::Database as HasRawValue<'r>>::RawValue>
+    ) -> crate::Result<<Self::Database as HasRawValue<'c>>::RawValue>
     where
-        'c: 'r,
+        // 'c: 'r,
         I: ColumnIndex<Self::Database>;
 }
 
@@ -70,8 +70,9 @@ macro_rules! impl_from_row_for_tuple {
     ($db:ident, $r:ident; $( ($idx:tt) -> $T:ident );+;) => {
         impl<'c, $($T,)+> crate::row::FromRow<'c, $r<'c>> for ($($T,)+)
         where
+            ($($T,)+): 'c,
             $($T: crate::types::Type<$db>,)+
-            $($T: for<'r> crate::decode::Decode<'r, $db>,)+
+            $($T: 'c + crate::decode::Decode<'c, $db>,)+
         {
             #[inline]
             fn from_row(row: $r<'c>) -> crate::Result<Self> {

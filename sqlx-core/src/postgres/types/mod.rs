@@ -11,8 +11,8 @@ mod bool;
 mod bytes;
 mod float;
 mod int;
+mod record;
 mod str;
-pub mod r#struct;
 
 #[cfg(feature = "chrono")]
 mod chrono;

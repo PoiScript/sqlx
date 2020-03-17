@@ -24,9 +24,9 @@ impl<'c> Row<'c> for SqliteRow<'c> {
         self.values
     }
 
-    fn try_get_raw<'r, I>(&'r self, index: I) -> crate::Result<SqliteValue<'r>>
+    fn try_get_raw<I>(&self, index: I) -> crate::Result<SqliteValue<'c>>
     where
-        'c: 'r,
+        // 'c: 'r,
         I: ColumnIndex<Self::Database>,
     {
         let index = index.resolve(self)?;
