@@ -7,7 +7,7 @@ use crate::types::Type;
 use byteorder::BigEndian;
 use std::convert::TryInto;
 
-impl Type<Postgres> for (bool, i32, i64, f64, String) {
+impl Type<Postgres> for (bool, i32, i64, f64, &'_ str) {
     fn type_info() -> PgTypeInfo {
         PgTypeInfo {
             id: TypeId(32925),
@@ -66,27 +66,27 @@ impl<'a> PgRecordEncoder<'a> {
     }
 }
 
-// impl Encode<Postgres> for (bool, i32, i64, f64, String) {
-//     fn encode(&self, buf: &mut Vec<u8>) {
-//         PgRecordEncoder::new(buf)
-//             .encode(self.0)
-//             .encode(self.1)
-//             .encode(self.2)
-//             .encode(self.3)
-//             .encode(&self.4)
-//             .finish()
-//     }
-//
-//     fn size_hint(&self) -> usize {
-//         // for each field; oid, length, value
-//         5 * (4 + 4)
-//             + (<bool as Encode<Postgres>>::size_hint(&self.0)
-//                 + <i32 as Encode<Postgres>>::size_hint(&self.1)
-//                 + <i64 as Encode<Postgres>>::size_hint(&self.2)
-//                 + <f64 as Encode<Postgres>>::size_hint(&self.3)
-//                 + <String as Encode<Postgres>>::size_hint(&self.4))
-//     }
-// }
+impl Encode<Postgres> for (bool, i32, i64, f64, &'_ str) {
+    fn encode(&self, buf: &mut Vec<u8>) {
+        PgRecordEncoder::new(buf)
+            .encode(self.0)
+            .encode(self.1)
+            .encode(self.2)
+            .encode(self.3)
+            .encode(&self.4)
+            .finish()
+    }
+
+    fn size_hint(&self) -> usize {
+        // for each field; oid, length, value
+        5 * (4 + 4)
+            + (<bool as Encode<Postgres>>::size_hint(&self.0)
+                + <i32 as Encode<Postgres>>::size_hint(&self.1)
+                + <i64 as Encode<Postgres>>::size_hint(&self.2)
+                + <f64 as Encode<Postgres>>::size_hint(&self.3)
+                + <&'_ str as Encode<Postgres>>::size_hint(&self.4))
+    }
+}
 
 pub struct PgRecordDecoder<'de> {
     value: PgValue<'de>,
@@ -204,7 +204,10 @@ impl<'de> PgRecordDecoder<'de> {
 }
 
 // TODO: Generalize over tuples
-impl<'de> Decode<'de, Postgres> for (bool, i32, i64, f64, String) {
+impl<'de, T5> Decode<'de, Postgres> for (bool, i32, i64, f64, T5)
+where
+    T5: 'de + Decode<'de, Postgres>,
+{
     fn decode(value: Option<PgValue<'de>>) -> crate::Result<Self> {
         let mut decoder = PgRecordDecoder::new(value.try_into()?)?;
 

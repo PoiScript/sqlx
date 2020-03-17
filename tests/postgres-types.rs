@@ -90,7 +90,6 @@ mod chrono {
 
 test_type!(record(
     Postgres,
-    (bool, i32, i64, f64, String),
-    "'(true,1,5,52.12,\"Hello, World\")'::tup5"
-        == (true, 1_i32, 5_i64, 52.12_f64, String::from("Hello, World"))
+    (bool, i32, i64, f64, &str),
+    "'(true,1,5,52.12,\"Hello, World\")'::tup5" == (true, 1_i32, 5_i64, 52.12_f64, "Hello, World")
 ));

@@ -72,7 +72,7 @@ macro_rules! impl_from_row_for_tuple {
         where
             ($($T,)+): 'c,
             $($T: crate::types::Type<$db>,)+
-            $($T: 'c + crate::decode::Decode<'c, $db>,)+
+            $($T: crate::decode::Decode<'c, $db>,)+
         {
             #[inline]
             fn from_row(row: $r<'c>) -> crate::Result<Self> {
